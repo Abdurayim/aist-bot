@@ -19,7 +19,20 @@ StartLimitIntervalSec=0
 StartLimitBurst=0
 
 [Service]
-Type=simple
+# notify, not simple: the bot reports when it has actually finished
+# starting, and feeds a watchdog afterwards. A process that is alive but
+# wedged looks perfectly healthy to Restart=always; the watchdog is what
+# notices it and replaces it.
+Type=notify
+NotifyAccess=main
+
+# If the bot stops reporting for this long, systemd kills and restarts it.
+WatchdogSec=120
+
+# The bot retries a slow link to Telegram before giving up, which can take
+# over a minute. Leave room for that rather than killing it mid-retry.
+TimeoutStartSec=180
+TimeoutStopSec=30
 
 User=aistbot
 Group=aistbot
@@ -39,6 +52,17 @@ RestartSec=5s
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=aist-bot
+
+# ── Surviving a server under memory pressure ─────────────────────────
+# When another project on this box exhausts the RAM, the kernel picks a
+# victim by score. The bot is tiny — a few megabytes — so killing it frees
+# almost nothing while silencing the school's only channel for complaints.
+# Make it a far less attractive target than whatever is actually at fault.
+OOMScoreAdjust=-500
+
+# If it is killed anyway, treat that as a failure so Restart=always brings
+# it back rather than leaving the unit stopped.
+OOMPolicy=stop
 
 # ── Hardening ────────────────────────────────────────────────────────
 # The bot needs its own directory and outbound HTTPS, nothing else.

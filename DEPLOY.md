@@ -99,6 +99,46 @@ blocks the deploy. You can also redeploy the current `main` without pushing:
 
 ---
 
+## Surviving a server under pressure
+
+The bot shares the server with whatever else you run, and the usual way a
+small VPS dies is that one project exhausts the RAM, the kernel OOM killer
+picks a victim badly, and you cannot even SSH in to fix it.
+
+```bash
+sudo /opt/aist-bot/deploy/setup-resilience.sh
+```
+
+Safe to re-run. It sets up four things:
+
+| | |
+|---|---|
+| **Swap** | A swap file the size of RAM (2–8 GB), in `/etc/fstab` so it survives reboots. Without it the kernel's only response to pressure is to kill something. |
+| **`vm.swappiness=10`** | The default of 60 is a desktop setting and pushes idle server processes to disk for no reason. |
+| **earlyoom** | Kills the actual memory hog *early*, while the box still responds, instead of letting it freeze. Configured to avoid `sshd` and the bot, and to prefer the usual culprits (`node`, `java`, `python`, databases). |
+| **OOM scores** | `sshd` at `-900` and the bot at `-500`. Killing either frees almost nothing, and killing `sshd` locks you out of your own server. |
+
+### How the bot itself survives
+
+| Failure | What happens |
+|---|---|
+| Bot crashes | `Restart=always`, back in 5s |
+| Server reboots | `systemctl enable` — starts at boot |
+| Telegram unreachable at boot | Six retries with backoff before the process gives up |
+| Repeated failed starts | `StartLimitIntervalSec=0` — systemd never stops trying |
+| Killed by the OOM killer | `OOMPolicy=stop` makes it a failure, so `Restart=always` applies |
+| **Process alive but wedged** | `Type=notify` + `WatchdogSec=120`. The bot reports every 60s; miss two and systemd kills and restarts it. |
+
+That last one is the case `Restart=always` cannot see on its own: a
+deadlocked process looks perfectly healthy from the outside.
+
+Check the watchdog is actually running:
+
+```bash
+systemctl show aist-bot -p WatchdogUSec -p Type -p NRestarts
+journalctl -u aist-bot | grep watchdog
+```
+
 ## Lock the server down
 
 A VPS usually arrives with root password login enabled, and the provider

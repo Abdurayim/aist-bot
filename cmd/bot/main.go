@@ -19,6 +19,7 @@ import (
 	"aist-bot/internal/database"
 	"aist-bot/internal/handlers"
 	"aist-bot/internal/services"
+	"aist-bot/internal/systemd"
 )
 
 func main() {
@@ -60,6 +61,17 @@ func main() {
 	stop := make(chan struct{})
 	go runCleanup(bot, stop)
 
+	// Tell the service manager the bot is up. Until this is sent the unit
+	// counts as still starting, so a bot that cannot reach Telegram at boot
+	// is reported as a failed start rather than a healthy one.
+	if err := systemd.Ready(); err != nil {
+		log.Printf("warning: %v", err)
+	}
+
+	if interval, running := systemd.StartWatchdog(stop); running {
+		log.Printf("✓ watchdog active, reporting every %s", interval)
+	}
+
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
 
@@ -68,6 +80,8 @@ func main() {
 	} else {
 		runPolling(bot, shutdown)
 	}
+
+	_ = systemd.Stopping()
 
 	close(stop)
 	log.Println("bot stopped")
