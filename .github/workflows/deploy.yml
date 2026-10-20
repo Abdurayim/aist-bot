@@ -1,0 +1,82 @@
+name: Deploy
+
+# Runs after a push to main. The server pulls the new code from GitHub
+# itself, builds it and restarts the service; nothing is uploaded from here
+# except the instruction to do so.
+on:
+  push:
+    branches: [main]
+  # Lets you redeploy the current main from the Actions tab without pushing.
+  workflow_dispatch:
+
+concurrency:
+  # Never let two deploys overlap on the same server.
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Test before deploying
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - run: go vet ./...
+      - run: go test ./... -race -count=1
+      - run: go build -o /tmp/aist-bot ./cmd/bot
+
+  deploy:
+    name: Deploy to the server
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Open an SSH session and run the server's deploy script
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/aist-bot' }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SSH_HOST:-}" ] || [ -z "${SSH_USER:-}" ] || [ -z "${SSH_KEY:-}" ]; then
+            echo "::error::SSH_HOST, SSH_USER and SSH_KEY must be set in the repository secrets."
+            exit 1
+          fi
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          # Pin the host key when SSH_KNOWN_HOSTS is set; otherwise learn it
+          # on the spot. Pinning is the safer of the two — see DEPLOY.md.
+          if [ -n "${SSH_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            echo "::warning::SSH_KNOWN_HOSTS is not set; trusting the host key on first use."
+            ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          fi
+          chmod 600 ~/.ssh/known_hosts
+
+          ssh -i ~/.ssh/deploy_key \
+              -p "$SSH_PORT" \
+              -o StrictHostKeyChecking=yes \
+              -o ConnectTimeout=20 \
+              "$SSH_USER@$SSH_HOST" \
+              "cd '$DEPLOY_PATH' && ./deploy/deploy.sh '${{ github.sha }}'"
+
+      - name: Clean up the key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

@@ -1,0 +1,144 @@
+# Deployment
+
+The bot runs on a Linux server as a systemd service. Pushing to `main`
+triggers a GitHub Actions workflow that opens an SSH session to the server;
+the **server** then pulls the new code from GitHub, builds it and restarts
+itself. Nothing is uploaded from the workflow except the instruction to go.
+
+```
+ git push ──▶ GitHub ──▶ Actions ──▶ ssh ──▶ server
+                 ▲                            │
+                 └──────── git pull ──────────┘
+                          build, restart, verify
+```
+
+If the new build fails to start, the server **rolls back** to the previous
+binary on its own.
+
+---
+
+## 1. Prepare the server
+
+On a fresh Ubuntu or Debian VPS, as root:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Abdurayim/aist-bot/main/deploy/setup-server.sh | sudo bash
+```
+
+That installs Go, creates the `aistbot` service account, clones the repo to
+`/opt/aist-bot`, installs the systemd unit, and allows the service account
+to restart that one service without a password.
+
+Then write the configuration — this file is **not** in git and never will be:
+
+```bash
+sudo -u aistbot nano /opt/aist-bot/.env
+```
+
+```ini
+BOT_TOKEN=123456:AA...
+ADMIN_PHONES=+998901112233,+998935556677,+998977778899
+DB_PATH=/opt/aist-bot/aist_bot.db
+ORG_NAME=AIST School
+```
+
+Start it:
+
+```bash
+sudo -u aistbot /opt/aist-bot/deploy/deploy.sh
+journalctl -u aist-bot -f
+```
+
+## 2. Give GitHub a key to the server
+
+Create a key pair **for deployment only**, on your own machine:
+
+```bash
+ssh-keygen -t ed25519 -C "github-actions-aist-bot" -f ~/.ssh/aist_deploy -N ""
+```
+
+Put the public half on the server:
+
+```bash
+ssh-copy-id -i ~/.ssh/aist_deploy.pub aistbot@YOUR_SERVER_IP
+```
+
+Then add the repository secrets at
+**Settings → Secrets and variables → Actions → New repository secret**:
+
+| Secret | Value | Required |
+|---|---|---|
+| `SSH_HOST` | the server's IP or hostname | yes |
+| `SSH_USER` | `aistbot` | yes |
+| `SSH_KEY` | the **private** key: `cat ~/.ssh/aist_deploy` — all of it, including the BEGIN and END lines | yes |
+| `SSH_PORT` | only if SSH is not on 22 | no |
+| `DEPLOY_PATH` | only if the app is not at `/opt/aist-bot` | no |
+| `SSH_KNOWN_HOSTS` | output of `ssh-keyscan YOUR_SERVER_IP` | recommended |
+
+`SSH_KNOWN_HOSTS` pins the server's identity. Without it the workflow
+accepts whatever host key answers, which is fine on a trusted network but
+leaves the deploy open to being redirected.
+
+## 3. Deploy
+
+```bash
+git push origin main
+```
+
+Watch it under the **Actions** tab. Tests run first and a failing test
+blocks the deploy. You can also redeploy the current `main` without pushing:
+**Actions → Deploy → Run workflow**.
+
+---
+
+## Day-to-day
+
+| | |
+|---|---|
+| Follow the log | `journalctl -u aist-bot -f` |
+| Is it running? | `systemctl status aist-bot` |
+| Restart it | `sudo systemctl restart aist-bot` |
+| Deploy by hand | `cd /opt/aist-bot && ./deploy/deploy.sh` |
+| Change who is an admin | edit `.env`, then restart |
+| Back up everything that matters | `cp /opt/aist-bot/aist_bot.db ~/backup-$(date +%F).db` |
+
+### Changing the admins
+
+Edit `ADMIN_PHONES` in `/opt/aist-bot/.env` and restart. The bot syncs the
+list at startup: numbers you add become admins, numbers you remove stop
+being admins. Each person's menu switches the next time they use the bot,
+and they are told their role changed.
+
+An admin who has never opened the bot cannot be sent anything — the startup
+log says so by name:
+
+```
+⚠ 1 admin(s) have not opened the bot yet and will NOT receive appeals:
+    +998977778899 — ask them to send /start and share this number
+```
+
+### What is not in git
+
+`.env` and `aist_bot.db` are untracked, and the deploy script's
+`git reset --hard` leaves untracked files alone. Your token, your admin
+numbers and every appeal ever filed stay on the server only.
+
+**Back up `aist_bot.db`.** It is the only copy of the appeals, and nothing
+in this pipeline backs it up for you. A daily copy is enough:
+
+```bash
+sudo crontab -e
+# 0 3 * * * sqlite3 /opt/aist-bot/aist_bot.db ".backup /var/backups/aist-$(date +\%F).db"
+```
+
+### If a deploy fails
+
+The script rolls back by itself and the Actions run goes red. To see why:
+
+```bash
+journalctl -u aist-bot --lines=50
+```
+
+The usual causes are a malformed `.env`, a revoked bot token, or two copies
+of the bot polling the same token — Telegram allows only one, and the log
+says `Conflict: terminated by other getUpdates request`.

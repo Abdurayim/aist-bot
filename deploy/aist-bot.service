@@ -1,0 +1,58 @@
+# systemd unit for the AIST bot.
+#
+#   sudo cp deploy/aist-bot.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now aist-bot
+#
+# Logs:  journalctl -u aist-bot -f
+
+[Unit]
+Description=AIST school feedback Telegram bot
+Documentation=https://github.com/Abdurayim/aist-bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+User=aistbot
+Group=aistbot
+
+WorkingDirectory=/opt/aist-bot
+ExecStart=/opt/aist-bot/bin/aist-bot
+
+# The bot reads .env from its working directory, and writes the SQLite
+# database there too.
+
+# Telegram connections drop; the bot should simply come back.
+Restart=always
+RestartSec=5s
+
+# Do not give up after repeated restarts: a network outage at the school
+# can easily exceed a default burst limit.
+StartLimitIntervalSec=0
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=aist-bot
+
+# ── Hardening ────────────────────────────────────────────────────────
+# The bot needs its own directory and outbound HTTPS, nothing else.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+# The one directory it may write to.
+ReadWritePaths=/opt/aist-bot
+
+[Install]
+WantedBy=multi-user.target

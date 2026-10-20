@@ -1,0 +1,15 @@
+# Environment
+.env
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Binaries
+bin/
+aist-bot
+*.exe
+
+# OS
+.DS_Store

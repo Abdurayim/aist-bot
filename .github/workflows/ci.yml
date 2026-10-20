@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  # Pushes to main are covered by the Deploy workflow, which runs the same
+  # checks before it deploys. Running them here too would just duplicate.
+  push:
+    branches-ignore: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test and build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          # Follows the version in go.mod, so there is one place to change it.
+          go-version-file: go.mod
+          cache: true
+
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt'd:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      # The bot handles every Telegram update on its own goroutine, so the
+      # race detector is part of the gate rather than an occasional check.
+      - name: Test
+        run: go test ./... -race -count=1
+
+      - name: Build
+        run: go build -o /tmp/aist-bot ./cmd/bot
