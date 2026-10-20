@@ -76,8 +76,12 @@ git config --system --add safe.directory "$APP_DIR"
 # ── Let the deploy user restart the service without a password ───────
 log "Granting $APP_USER permission to restart $SERVICE"
 cat > "/etc/sudoers.d/$SERVICE" <<SUDOERS
-# The deploy script restarts the service and nothing else.
+# The deploy script restarts the service, and reinstalls the unit file when
+# it changes in the repo. Nothing else, and the install target is fixed so
+# this cannot be turned into writing an arbitrary file.
 $APP_USER ALL=(root) NOPASSWD: /bin/systemctl restart $SERVICE, /usr/bin/systemctl restart $SERVICE
+$APP_USER ALL=(root) NOPASSWD: /bin/systemctl daemon-reload, /usr/bin/systemctl daemon-reload
+$APP_USER ALL=(root) NOPASSWD: /usr/bin/install -m 644 -o root -g root $APP_DIR/deploy/$SERVICE.service /etc/systemd/system/$SERVICE.service
 SUDOERS
 chmod 440 "/etc/sudoers.d/$SERVICE"
 

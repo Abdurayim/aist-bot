@@ -42,7 +42,19 @@ if [ -n "$EXPECTED_SHA" ] && [ "$CURRENT_SHA" != "$EXPECTED_SHA" ]; then
   echo "note: expected ${EXPECTED_SHA:0:7}, got ${CURRENT_SHA:0:7} (a newer push probably landed first)"
 fi
 
-# ── 2. Build before touching the running bot ─────────────────────────
+# ── 2. Keep the systemd unit in step with the repo ───────────────────
+# Without this, a change to aist-bot.service would sit in git for ever
+# while the server kept running the unit installed on day one.
+UNIT_SRC="$APP_DIR/deploy/aist-bot.service"
+UNIT_DST="/etc/systemd/system/$SERVICE.service"
+
+if [ -f "$UNIT_SRC" ] && ! cmp -s "$UNIT_SRC" "$UNIT_DST"; then
+  log "The systemd unit changed — reinstalling it"
+  sudo install -m 644 -o root -g root "$UNIT_SRC" "$UNIT_DST"
+  sudo systemctl daemon-reload
+fi
+
+# ── 3. Build before touching the running bot ─────────────────────────
 log "Building"
 
 mkdir -p "$APP_DIR/bin"
@@ -52,7 +64,7 @@ if ! go build -trimpath -o "$BIN.new" ./cmd/bot; then
   fail "Build failed — the running bot was left untouched."
 fi
 
-# ── 3. Swap the binary and restart ───────────────────────────────────
+# ── 4. Swap the binary and restart ───────────────────────────────────
 log "Restarting $SERVICE"
 
 if [ -f "$BIN" ]; then
@@ -63,7 +75,7 @@ mv -f "$BIN.new" "$BIN"
 
 sudo systemctl restart "$SERVICE"
 
-# ── 4. Make sure it actually came back ───────────────────────────────
+# ── 5. Make sure it actually came back ───────────────────────────────
 log "Checking the service"
 
 for _ in $(seq 1 15); do
@@ -80,7 +92,7 @@ for _ in $(seq 1 15); do
   fi
 done
 
-# ── 5. Roll back ─────────────────────────────────────────────────────
+# ── 6. Roll back ─────────────────────────────────────────────────────
 printf '\n\033[31m!! The service did not come back up. Rolling back.\033[0m\n' >&2
 journalctl -u "$SERVICE" --no-pager --lines=30 || true
 
