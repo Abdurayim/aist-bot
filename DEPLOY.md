@@ -29,6 +29,14 @@ That installs Go, creates the `aistbot` service account, clones the repo to
 `/opt/aist-bot`, installs the systemd unit, and allows the service account
 to restart that one service without a password.
 
+**If the repository is private**, the server cannot clone over HTTPS. Add a
+read-only deploy key on GitHub (Settings → Deploy keys) for a key generated
+on the server, and run the script against the SSH URL instead:
+
+```bash
+REPO=git@github.com:Abdurayim/aist-bot.git sudo -E bash deploy/setup-server.sh
+```
+
 Then write the configuration — this file is **not** in git and never will be:
 
 ```bash
@@ -90,6 +98,28 @@ blocks the deploy. You can also redeploy the current `main` without pushing:
 **Actions → Deploy → Run workflow**.
 
 ---
+
+## Lock the server down
+
+A VPS usually arrives with root password login enabled, and the provider
+often sets the control-panel password and the root password to the same
+value. Fix both before the bot carries real complaints:
+
+```bash
+# 1. Give the service account the deploy key, then confirm it works
+ssh -i ~/.ssh/aist_deploy aistbot@YOUR_SERVER_IP 'echo ok'
+
+# 2. Only once that prints ok — turn off password logins
+sudo sed -i 's/^#*PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
+sudo sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+sudo systemctl restart ssh
+
+# 3. Change the root password to something not shared with the panel
+sudo passwd root
+```
+
+Keep a second terminal open while doing this, so a mistake in the SSH
+config does not lock you out.
 
 ## Day-to-day
 
