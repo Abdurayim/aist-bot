@@ -193,13 +193,8 @@ log says so by name:
 `git reset --hard` leaves untracked files alone. Your token, your admin
 numbers and every appeal ever filed stay on the server only.
 
-**Back up `aist_bot.db`.** It is the only copy of the appeals, and nothing
-in this pipeline backs it up for you. A daily copy is enough:
-
-```bash
-sudo crontab -e
-# 0 3 * * * sqlite3 /opt/aist-bot/aist_bot.db ".backup /var/backups/aist-$(date +\%F).db"
-```
+**Back up `aist_bot.db`.** It is the only copy of the appeals — see
+**Backups** below, which is automatic.
 
 ## Backups
 
