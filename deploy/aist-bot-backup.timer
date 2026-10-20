@@ -1,0 +1,25 @@
+# Runs the database backup once a day.
+#
+#   sudo systemctl enable --now aist-bot-backup.timer
+#   systemctl list-timers aist-bot-backup.timer
+
+[Unit]
+Description=Daily backup of the AIST bot database
+Documentation=https://github.com/Abdurayim/aist-bot
+
+[Timer]
+# Half past three in the morning, local time — well clear of the school day.
+OnCalendar=*-*-* 03:30:00
+
+# Spread the start over a few minutes so the backup never lands at exactly
+# the same instant as every other cron-like job on the box.
+RandomizedDelaySec=5m
+
+# If the server was off at 03:30, take the backup once it comes back
+# instead of silently skipping the day.
+Persistent=true
+
+Unit=aist-bot-backup.service
+
+[Install]
+WantedBy=timers.target

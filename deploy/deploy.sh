@@ -45,12 +45,20 @@ fi
 # ── 2. Keep the systemd unit in step with the repo ───────────────────
 # Without this, a change to aist-bot.service would sit in git for ever
 # while the server kept running the unit installed on day one.
-UNIT_SRC="$APP_DIR/deploy/aist-bot.service"
-UNIT_DST="/etc/systemd/system/$SERVICE.service"
+reload_needed=0
 
-if [ -f "$UNIT_SRC" ] && ! cmp -s "$UNIT_SRC" "$UNIT_DST"; then
-  log "The systemd unit changed — reinstalling it"
-  sudo install -m 644 -o root -g root "$UNIT_SRC" "$UNIT_DST"
+for unit in "$SERVICE.service" "$SERVICE-backup.service" "$SERVICE-backup.timer"; do
+  src="$APP_DIR/deploy/$unit"
+  dst="/etc/systemd/system/$unit"
+
+  if [ -f "$src" ] && ! cmp -s "$src" "$dst"; then
+    log "$unit changed — reinstalling it"
+    sudo install -m 644 -o root -g root "$src" "$dst"
+    reload_needed=1
+  fi
+done
+
+if [ "$reload_needed" = "1" ]; then
   sudo systemctl daemon-reload
 fi
 

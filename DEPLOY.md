@@ -201,6 +201,66 @@ sudo crontab -e
 # 0 3 * * * sqlite3 /opt/aist-bot/aist_bot.db ".backup /var/backups/aist-$(date +\%F).db"
 ```
 
+## Backups
+
+The database is the only copy of every complaint, proposal and thank-you
+note the school receives. The PDFs live in Telegram's cloud and are
+referenced by id, so a lost database cannot be rebuilt from them.
+
+A timer takes a backup every night at 03:30 and `setup-server.sh` enables
+it, so there is nothing to set up by hand.
+
+```bash
+systemctl list-timers aist-bot-backup.timer   # when it next runs
+journalctl -u aist-bot-backup                 # what it did
+sudo systemctl start aist-bot-backup          # take one right now
+./deploy/restore.sh --list                    # what you have
+```
+
+Backups go to `/var/backups/aist-bot/`, gzipped, `600`, named by date.
+Kept **daily for 14 days** and **first-of-month for a year**.
+
+Two things make this more than a copy:
+
+- The bot keeps SQLite in WAL mode while running, so a plain `cp` can catch
+  a half-written transaction. `.backup` takes a consistent snapshot of a
+  live database.
+- Every backup is opened and integrity-checked, and its rows counted,
+  **before** any older backup is pruned. A snapshot that fails is deleted
+  and nothing else is touched.
+
+### Restoring
+
+```bash
+sudo ./deploy/restore.sh                    # the newest backup
+sudo ./deploy/restore.sh /var/backups/aist-bot/aist_bot-2026-10-20_0330.db.gz
+```
+
+It checks the backup before touching anything, shows you what is being
+replaced against what is coming in, warns if the backup holds *fewer*
+appeals than the live database, and saves the database it replaces next to
+the original. Then it stops the bot, swaps the file, and starts it again.
+
+**Try a restore once, deliberately, while nothing is wrong.** A backup
+nobody has restored is a guess.
+
+### Getting backups off the server
+
+Everything above still lives on one disk. If the VPS is lost, so are the
+backups. Set `BACKUP_REMOTE` in `/opt/aist-bot/.env` to an rsync
+destination and each backup is copied there as well:
+
+```ini
+BACKUP_REMOTE=you@your-mac-or-other-host:/path/to/backups/
+```
+
+That needs an SSH key the `aistbot` user can use without a password. Or
+pull them to your own machine on a schedule:
+
+```bash
+rsync -az aistbot@45.130.148.39:/var/backups/aist-bot/ ~/aist-backups/
+```
+
 ### If a deploy fails
 
 The script rolls back by itself and the Actions run goes red. To see why:

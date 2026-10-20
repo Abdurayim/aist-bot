@@ -82,14 +82,24 @@ cat > "/etc/sudoers.d/$SERVICE" <<SUDOERS
 $APP_USER ALL=(root) NOPASSWD: /bin/systemctl restart $SERVICE, /usr/bin/systemctl restart $SERVICE
 $APP_USER ALL=(root) NOPASSWD: /bin/systemctl daemon-reload, /usr/bin/systemctl daemon-reload
 $APP_USER ALL=(root) NOPASSWD: /usr/bin/install -m 644 -o root -g root $APP_DIR/deploy/$SERVICE.service /etc/systemd/system/$SERVICE.service
+$APP_USER ALL=(root) NOPASSWD: /usr/bin/install -m 644 -o root -g root $APP_DIR/deploy/$SERVICE-backup.service /etc/systemd/system/$SERVICE-backup.service
+$APP_USER ALL=(root) NOPASSWD: /usr/bin/install -m 644 -o root -g root $APP_DIR/deploy/$SERVICE-backup.timer /etc/systemd/system/$SERVICE-backup.timer
 SUDOERS
 chmod 440 "/etc/sudoers.d/$SERVICE"
 
 # ── systemd ──────────────────────────────────────────────────────────
-log "Installing the systemd unit"
+log "Installing the systemd units"
 cp "$APP_DIR/deploy/$SERVICE.service" "/etc/systemd/system/$SERVICE.service"
+cp "$APP_DIR/deploy/$SERVICE-backup.service" "/etc/systemd/system/$SERVICE-backup.service"
+cp "$APP_DIR/deploy/$SERVICE-backup.timer" "/etc/systemd/system/$SERVICE-backup.timer"
 systemctl daemon-reload
 systemctl enable "$SERVICE" >/dev/null
+
+log "Setting up daily database backups"
+install -d -m 700 -o "$APP_USER" -g "$APP_USER" /var/backups/$SERVICE
+systemctl enable --now "$SERVICE-backup.timer" >/dev/null
+note_next="$(systemctl list-timers "$SERVICE-backup.timer" --no-pager --no-legend 2>/dev/null | awk '{print $1, $2, $3}')"
+echo "    next run: ${note_next:-scheduled}"
 
 # ── What is left for a human ─────────────────────────────────────────
 cat <<DONE

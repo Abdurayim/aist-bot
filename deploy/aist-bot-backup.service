@@ -1,0 +1,36 @@
+# Takes one database backup. Driven by aist-bot-backup.timer.
+#
+#   sudo systemctl start aist-bot-backup    # run one now
+#   journalctl -u aist-bot-backup           # what happened
+
+[Unit]
+Description=Back up the AIST bot database
+Documentation=https://github.com/Abdurayim/aist-bot
+# No dependency on aist-bot.service: a backup is just as wanted when the
+# bot is stopped, and more so if it is stopped because something broke.
+
+[Service]
+Type=oneshot
+
+User=aistbot
+Group=aistbot
+
+WorkingDirectory=/opt/aist-bot
+ExecStart=/opt/aist-bot/deploy/backup.sh
+
+# A backup must never crowd out the bot itself.
+Nice=10
+IOSchedulingClass=idle
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=aist-bot-backup
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/aist-bot /var/backups/aist-bot
+
+[Install]
+WantedBy=multi-user.target
