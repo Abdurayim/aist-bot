@@ -12,6 +12,12 @@ Documentation=https://github.com/Abdurayim/aist-bot
 After=network-online.target
 Wants=network-online.target
 
+# Never give up restarting. The school's connection to Telegram is not
+# always reachable, and the default limit of five starts in ten seconds
+# would otherwise leave the bot stopped until someone noticed.
+StartLimitIntervalSec=0
+StartLimitBurst=0
+
 [Service]
 Type=simple
 
@@ -25,12 +31,10 @@ ExecStart=/opt/aist-bot/bin/aist-bot
 # database there too.
 
 # Telegram connections drop; the bot should simply come back.
+# (The start-rate limit is lifted in [Unit] above, which is where systemd
+# reads those two settings from.)
 Restart=always
 RestartSec=5s
-
-# Do not give up after repeated restarts: a network outage at the school
-# can easily exceed a default burst limit.
-StartLimitIntervalSec=0
 
 StandardOutput=journal
 StandardError=journal

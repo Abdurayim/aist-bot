@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -35,7 +36,7 @@ func main() {
 
 	log.Printf("✓ database ready at %s", cfg.Database.Path)
 
-	bot, err := services.NewBotService(cfg, database.DB)
+	bot, err := connectWithRetry(cfg)
 	if err != nil {
 		log.Fatalf("telegram error: %v", err)
 	}
@@ -70,6 +71,40 @@ func main() {
 
 	close(stop)
 	log.Println("bot stopped")
+}
+
+// connectWithRetry opens the Telegram connection, retrying a few times
+// before giving up.
+//
+// Reaching api.telegram.org is not always instant from where this bot runs,
+// and a server reboot often brings the bot up before the network has
+// settled. Without this, the first attempt fails, systemd restarts the
+// process, and the journal fills with crashes for what is really just a
+// slow link.
+func connectWithRetry(cfg *config.Config) (*services.BotService, error) {
+	const attempts = 6
+
+	var lastErr error
+
+	for attempt := 1; attempt <= attempts; attempt++ {
+		bot, err := services.NewBotService(cfg, database.DB)
+		if err == nil {
+			return bot, nil
+		}
+
+		lastErr = err
+
+		if attempt == attempts {
+			break
+		}
+
+		wait := time.Duration(attempt*5) * time.Second
+		log.Printf("could not reach Telegram (attempt %d/%d): %v — retrying in %s",
+			attempt, attempts, err, wait)
+		time.Sleep(wait)
+	}
+
+	return nil, fmt.Errorf("gave up after %d attempts: %w", attempts, lastErr)
 }
 
 // runPolling is the default mode: no public URL or TLS certificate needed,
