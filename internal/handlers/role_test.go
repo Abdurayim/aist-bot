@@ -277,3 +277,99 @@ func TestRoleIsRecordedAtRegistration(t *testing.T) {
 		t.Fatalf("role after registering as a parent = %q, want %q", storedParent.Role, models.RoleParent)
 	}
 }
+
+// parentGreeting is a fragment of the parent welcome that carries no HTML
+// tags, so it matches the message as actually sent.
+const parentGreeting = "Bu bot orqali siz maktabga"
+
+// TestAdminIsNeverGreetedAsAParent. The admin menu was right, but /start
+// still told admins "you can send a complaint through this bot" — which
+// describes something their role is not allowed to do.
+func TestAdminIsNeverGreetedAsAParent(t *testing.T) {
+	b := newTestBot(t, adminPhone)
+	registerParent(t, b, i18n.Uzbek, admin, adminPhone)
+
+	// The text shown the moment registration completes.
+	assertContains(t, b.tg, "ma’muriyat vakili sifatida tanildingiz")
+
+	// /start for a returning admin.
+	b.tg.Reset()
+	b.sendText(admin.ID, admin, "/start")
+
+	assertContains(t, b.tg, "Siz maktab ma’muriyati vakilisiz")
+
+	// /help for an admin.
+	b.tg.Reset()
+	b.sendText(admin.ID, admin, "/help")
+
+	assertContains(t, b.tg, "Admin uchun qo‘llanma")
+
+	// None of those may ever offer to take a complaint from them.
+	for _, m := range b.tg.ToChat(admin.ID) {
+		if strings.Contains(m.Body(), parentGreeting) {
+			t.Fatalf("an admin was told they can send appeals:\n%s", m.Body())
+		}
+	}
+}
+
+// TestParentGreetingIsUnchanged guards against fixing the admin text by
+// breaking the parent text.
+func TestParentGreetingIsUnchanged(t *testing.T) {
+	b := newTestBot(t, adminPhone)
+	registerParent(t, b, i18n.Uzbek, parent, parentPhone)
+
+	b.tg.Reset()
+	b.sendText(parent.ID, parent, "/start")
+	assertContains(t, b.tg, parentGreeting)
+
+	b.tg.Reset()
+	b.sendText(parent.ID, parent, "/help")
+	assertContains(t, b.tg, "Bot qanday ishlaydi?")
+
+	for _, m := range b.tg.ToChat(parent.ID) {
+		if strings.Contains(m.Body(), "ma’muriyati vakilisiz") {
+			t.Fatalf("a parent was greeted as an admin:\n%s", m.Body())
+		}
+	}
+}
+
+// TestGreetingFollowsAPromotion: the wording must track the role change,
+// not the role someone had when they first registered.
+func TestGreetingFollowsAPromotion(t *testing.T) {
+	b := newTestBot(t, adminPhone)
+	registerParent(t, b, i18n.Uzbek, parent, parentPhone)
+
+	promote(t, b, adminPhone, parentPhone)
+	b.sendText(parent.ID, parent, "salom") // absorb the hand-over
+
+	b.tg.Reset()
+	b.sendText(parent.ID, parent, "/start")
+
+	assertContains(t, b.tg, "Siz maktab ma’muriyati vakilisiz")
+}
+
+// TestAdminGreetingExistsInEveryLanguage.
+func TestAdminGreetingExistsInEveryLanguage(t *testing.T) {
+	cases := []struct {
+		lang   i18n.Language
+		phone  string
+		id     int64
+		expect string
+	}{
+		{i18n.Uzbek, "+998901110001", 801, "ma’muriyati vakilisiz"},
+		{i18n.Russian, "+998901110002", 802, "представитель администрации"},
+		{i18n.English, "+998901110003", 803, "member of the school administration"},
+	}
+
+	for _, c := range cases {
+		b := newTestBot(t, c.phone)
+		who := user(c.id, "admin")
+
+		registerParent(t, b, c.lang, who, c.phone)
+
+		b.tg.Reset()
+		b.sendText(who.ID, who, "/start")
+
+		assertContains(t, b.tg, c.expect)
+	}
+}

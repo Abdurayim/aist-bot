@@ -71,16 +71,19 @@ func Getf(key string, lang Language, args ...interface{}) string {
 // Message keys. Keeping them as constants means a typo is a compile error.
 const (
 	// Language + registration
-	MsgChooseLanguage = "choose_language"
-	MsgWelcome        = "welcome"
-	MsgRequestPhone   = "request_phone"
-	MsgPhoneHint      = "phone_hint"
-	MsgPhoneInvalid   = "phone_invalid"
-	MsgRegistered     = "registered"
+	MsgChooseLanguage  = "choose_language"
+	MsgWelcome         = "welcome"
+	MsgWelcomeAdmin    = "welcome_admin"
+	MsgRequestPhone    = "request_phone"
+	MsgPhoneHint       = "phone_hint"
+	MsgPhoneInvalid    = "phone_invalid"
+	MsgRegistered      = "registered"
+	MsgRegisteredAdmin = "registered_admin"
 
 	// Main menu
-	MsgMainMenu = "main_menu"
-	MsgHelp     = "help"
+	MsgMainMenu  = "main_menu"
+	MsgHelp      = "help"
+	MsgHelpAdmin = "help_admin"
 
 	// Appeal flow
 	MsgStepDepartment    = "step_department"

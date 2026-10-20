@@ -13,6 +13,22 @@ var uzbek = map[string]string{
 	MsgRegistered:   "✅ <b>Rahmat, ro‘yxatdan o‘tdingiz!</b>\n\nEndi quyidagi tugmalardan birini tanlang 👇",
 
 	// ── Main menu ───────────────────────────────────────────────────
+	MsgWelcomeAdmin: "👋 <b>Assalomu alaykum!</b>\n\n" +
+		"Siz maktab ma’muriyati vakilisiz.\n\n" +
+		"Ota-onalarning murojaatlari sizga hujjat (PDF) ko‘rinishida keladi. " +
+		"Quyidagi menyu orqali bo‘limlar va sinflarni boshqarishingiz mumkin 👇",
+	MsgRegisteredAdmin: "✅ <b>Rahmat, ro‘yxatdan o‘tdingiz!</b>\n\n" +
+		"Siz ma’muriyat vakili sifatida tanildingiz — endi barcha murojaatlar sizga keladi 👇",
+	MsgHelpAdmin: "ℹ️ <b>Admin uchun qo‘llanma</b>\n\n" +
+		"Ota-ona murojaat yuborganda, u sizga <b>PDF hujjat</b> ko‘rinishida keladi. " +
+		"Hujjatda bo‘lim, sinf, farzand ismi, telefon raqami va vaqt ko‘rsatiladi.\n\n" +
+		"<b>Menyu:</b>\n" +
+		"📂 <b>Bo‘limlar</b> — murojaat yo‘naltiriladigan bo‘limlarni qo‘shish, nomini o‘zgartirish, yashirish yoki o‘chirish.\n" +
+		"🏫 <b>Sinflar</b> — sinflarni qo‘shish va boshqarish. Kamida bitta sinf bo‘lishi shart, aks holda ota-onalar murojaat yubora olmaydi.\n" +
+		"📬 <b>Oxirgi murojaatlar</b> — oxirgi murojaatlar ro‘yxati; hujjatni qayta olish uchun ustiga bosing.\n" +
+		"📊 <b>Statistika</b> — umumiy sonlar.\n\n" +
+		"💡 Ma’muriyat murojaatlarni <b>qabul qiladi</b> — yangi murojaat yuborish ota-onalar uchun.\n\n" +
+		"Adminlar ro‘yxati serverdagi <code>.env</code> faylida (<code>ADMIN_PHONES</code>) belgilanadi.",
 	MsgMainMenu: "🏠 <b>Asosiy menyu</b>\n\nNima qilmoqchisiz?",
 	MsgHelp: "ℹ️ <b>Bot qanday ishlaydi?</b>\n\n" +
 		"1️⃣ Murojaat turini tanlaysiz — shikoyat, taklif yoki minnatdorchilik.\n" +

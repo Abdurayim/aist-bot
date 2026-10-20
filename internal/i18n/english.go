@@ -13,6 +13,22 @@ var english = map[string]string{
 	MsgRegistered:   "✅ <b>Thank you, you are registered!</b>\n\nNow choose one of the buttons below 👇",
 
 	// ── Main menu ───────────────────────────────────────────────────
+	MsgWelcomeAdmin: "👋 <b>Hello!</b>\n\n" +
+		"You are a member of the school administration.\n\n" +
+		"Parents' messages arrive here as a PDF document. " +
+		"Use the menu below to manage departments and classes 👇",
+	MsgRegisteredAdmin: "✅ <b>Thank you, you are registered!</b>\n\n" +
+		"You have been recognised as a member of the administration — all messages will now come to you 👇",
+	MsgHelpAdmin: "ℹ️ <b>Admin guide</b>\n\n" +
+		"When a parent sends a message it arrives here as a <b>PDF document</b>, showing the department, " +
+		"class, child's name, phone number and time.\n\n" +
+		"<b>Your menu:</b>\n" +
+		"📂 <b>Departments</b> — add, rename, hide or delete the topics parents write about.\n" +
+		"🏫 <b>Classes</b> — add and manage classes. At least one is required, or parents cannot send anything.\n" +
+		"📬 <b>Latest messages</b> — the most recent messages; tap one to receive its document again.\n" +
+		"📊 <b>Statistics</b> — overall totals.\n\n" +
+		"💡 The administration <b>receives</b> messages — sending new ones is for parents.\n\n" +
+		"Who is an admin is set in the <code>.env</code> file on the server (<code>ADMIN_PHONES</code>).",
 	MsgMainMenu: "🏠 <b>Main menu</b>\n\nWhat would you like to do?",
 	MsgHelp: "ℹ️ <b>How does the bot work?</b>\n\n" +
 		"1️⃣ Choose the kind of message — complaint, proposal or thank-you.\n" +

@@ -19,7 +19,7 @@ func handleStart(c *ctx) error {
 		if err := c.ClearState(); err != nil {
 			return c.Fail("handleStart/clear", err)
 		}
-		return showMainMenu(c, c.T(i18n.MsgWelcome))
+		return showMainMenu(c, c.T(forRole(c, i18n.MsgWelcome, i18n.MsgWelcomeAdmin)))
 	}
 
 	if err := c.SetState(models.StateAwaitingLanguage); err != nil {
@@ -131,7 +131,19 @@ func completeRegistration(c *ctx, phone string) error {
 		return c.Fail("completeRegistration/clear", err)
 	}
 
-	return showMainMenu(c, c.T(i18n.MsgRegistered))
+	return showMainMenu(c, c.T(forRole(c, i18n.MsgRegistered, i18n.MsgRegisteredAdmin)))
+}
+
+// forRole picks between the parent wording and the admin wording.
+//
+// The two roles use the bot for opposite purposes, so greeting an admin
+// with "you can send a complaint through this bot" is not just untidy — it
+// describes something they are not allowed to do.
+func forRole(c *ctx, parentKey, adminKey string) string {
+	if c.IsAdmin {
+		return adminKey
+	}
+	return parentKey
 }
 
 // showMainMenu sends text with the home keyboard and resets the state, so

@@ -12,8 +12,11 @@ import (
 // key would silently fall back to Uzbek for a Russian or English speaker.
 func TestEveryLanguageCoversEveryKey(t *testing.T) {
 	keys := []string{
-		i18n.MsgChooseLanguage, i18n.MsgWelcome, i18n.MsgRequestPhone, i18n.MsgPhoneHint,
-		i18n.MsgPhoneInvalid, i18n.MsgRegistered, i18n.MsgMainMenu, i18n.MsgHelp,
+		i18n.MsgChooseLanguage, i18n.MsgWelcome, i18n.MsgWelcomeAdmin,
+		i18n.MsgRequestPhone, i18n.MsgPhoneHint,
+		i18n.MsgPhoneInvalid, i18n.MsgRegistered, i18n.MsgRegisteredAdmin,
+		i18n.MsgMainMenu, i18n.MsgHelp, i18n.MsgHelpAdmin,
+		i18n.MsgAdminCannotSubmit, i18n.MsgRoleNowAdmin, i18n.MsgRoleNowParent,
 		i18n.MsgStepDepartment, i18n.MsgStepClass, i18n.MsgNoClasses, i18n.MsgNoDepartments,
 		i18n.MsgStepChildName, i18n.MsgChildNameInvalid,
 		i18n.MsgStepTextComplaint, i18n.MsgStepTextProposal, i18n.MsgStepTextGratitude,

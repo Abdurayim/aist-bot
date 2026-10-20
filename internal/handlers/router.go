@@ -168,7 +168,7 @@ func handleCommand(c *ctx, text string) error {
 		if c.User == nil {
 			return handleStart(c)
 		}
-		return showMainMenu(c, c.T(i18n.MsgHelp))
+		return showMainMenu(c, c.T(forRole(c, i18n.MsgHelp, i18n.MsgHelpAdmin)))
 
 	case "/cancel":
 		return handleCancel(c)
@@ -205,7 +205,7 @@ func handleMainMenuButton(c *ctx, text string) (bool, error) {
 
 	case matchesButton(text, i18n.BtnHelp):
 		return true, leaveFlow(c, func(c *ctx) error {
-			return c.Send(c.T(i18n.MsgHelp), nil)
+			return c.Send(c.T(forRole(c, i18n.MsgHelp, i18n.MsgHelpAdmin)), nil)
 		})
 
 	case matchesButton(text, i18n.BtnSettings):
